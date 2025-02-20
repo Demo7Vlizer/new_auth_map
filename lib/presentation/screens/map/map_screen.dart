@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/map_controller.dart';
-import '../profile/profile_screen.dart';
 
 class MapScreen extends StatelessWidget {
   const MapScreen({super.key});

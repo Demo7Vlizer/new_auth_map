@@ -1,4 +1,4 @@
-// ignore_for_file: prefer_const_constructors
+// ignore_for_file: prefer_const_constructors, unused_element
 
 import 'package:auth_map/presentation/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +23,7 @@ class MapScreen extends StatelessWidget {
             height: 80,
             child: Stack(
               alignment: Alignment.center,
-              children: [
+              children: const [
                 Positioned(
                   top: 0,
                   child: Text(
@@ -41,10 +41,6 @@ class MapScreen extends StatelessWidget {
         );
       }),
     );
-  }
-
-  Widget _buildDirectionIndicator(String direction, double rotation) {
-    return Container(); // Empty container instead of the direction indicator
   }
 
   @override
