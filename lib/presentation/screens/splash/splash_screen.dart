@@ -20,22 +20,17 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       final authController = Get.find<AuthController>();
       
-      // Initialize session service if not already initialized
-      if (!authController.sessionService.isInitialized) {
-        await authController.sessionService.init();
-      }
-
-      // Add small delay for splash screen
+      // Add artificial delay for splash screen
       await Future.delayed(const Duration(seconds: 2));
 
-      // Check if session is valid
+      // Check if there's a valid session
       if (authController.sessionService.isSessionValid()) {
         final savedUser = authController.sessionService.getCurrentUser();
         if (savedUser != null) {
-          // Update current user in auth controller
+          // Restore user session
           authController.currentUser.value = savedUser;
           
-          // Update user's location silently
+          // Update location silently
           try {
             final location = await authController.getCurrentLocation();
             await authController.updateUserProfile(
@@ -45,15 +40,15 @@ class _SplashScreenState extends State<SplashScreen> {
             );
           } catch (e) {
             print('Error updating location: $e');
-            // Continue even if location update fails
           }
           
+          // Navigate directly to map screen
           Get.offAllNamed('/map');
           return;
         }
       }
-      
-      // No valid session found
+
+      // No valid session, go to welcome screen
       Get.offAllNamed('/welcome');
     } catch (e) {
       print('Error initializing app: $e');

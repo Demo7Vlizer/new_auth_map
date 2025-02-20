@@ -44,11 +44,18 @@ class SessionService {
   }
 
   Future<void> saveUser(UserModel user) async {
-    print('Saving user: ${user.name}');
-    if (!isInitialized) await init();
-    await _box?.put(_sessionKey, user);
-    await updateLastActive();
-    print('User saved successfully');
+    try {
+      print('Saving user: ${user.name}');
+      if (!isInitialized) await init();
+      
+      await _box?.put(_sessionKey, user);
+      await updateLastActive();
+      
+      print('User saved successfully with timestamp: ${DateTime.now()}');
+    } catch (e) {
+      print('Error saving user: $e');
+      throw Exception('Failed to save user: $e');
+    }
   }
 
   UserModel? getCurrentUser() {
@@ -86,27 +93,40 @@ class SessionService {
   }
 
   bool isSessionValid() {
-    if (!isInitialized) {
-      print('Session validation failed: not initialized');
+    try {
+      if (!isInitialized) {
+        print('Session validation failed: not initialized');
+        return false;
+      }
+      
+      final user = getCurrentUser();
+      if (user == null) {
+        print('Session validation failed: no user found');
+        return false;
+      }
+
+      final lastActiveStr = _settingsBox?.get(_lastActiveKey);
+      if (lastActiveStr == null) {
+        print('Session validation failed: no last active timestamp');
+        return false;
+      }
+      
+      final lastActive = DateTime.parse(lastActiveStr);
+      final now = DateTime.now();
+      final difference = now.difference(lastActive).inDays;
+      
+      final isValid = difference < _sessionExpiryDays;
+      print('Session validation: days since last active: $difference, isValid: $isValid');
+      
+      // Update last active timestamp if session is valid
+      if (isValid) {
+        updateLastActive();
+      }
+      
+      return isValid;
+    } catch (e) {
+      print('Error validating session: $e');
       return false;
     }
-    
-    final lastActiveStr = _settingsBox?.get(_lastActiveKey);
-    if (lastActiveStr == null) {
-      print('Session validation failed: no last active timestamp');
-      return false;
-    }
-    
-    final lastActive = DateTime.parse(lastActiveStr);
-    final now = DateTime.now();
-    final difference = now.difference(lastActive).inDays;
-    
-    final user = getCurrentUser();
-    final isValid = user != null && difference < _sessionExpiryDays;
-    
-    print('Session validation: user exists: ${user != null}, days since last active: $difference');
-    print('Session is ${isValid ? 'valid' : 'invalid'}');
-    
-    return isValid;
   }
 } 

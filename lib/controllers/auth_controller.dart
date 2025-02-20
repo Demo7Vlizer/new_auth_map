@@ -215,48 +215,39 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       if (otp == _generatedOTP) {
-        // Check if user exists
-        final users = await _userService.getAllUsers();
-        final existingUser =
-            users.firstWhereOrNull((user) => user.phone == '+91$phoneNumber');
-
-        UserModel user;
-
-        if (existingUser != null) {
-          // User exists, update their location
-          final location = await _getCurrentLocation();
-          user = UserModel(
-            id: existingUser.id,
-            name: existingUser.name,
-            email: existingUser.email,
-            phone: existingUser.phone,
-            location: location,
-            image: existingUser.image,
-          );
-          await _userService.updateUser(user);
-        } else {
-          // Create new user
-          final location = await _getCurrentLocation();
-          user = UserModel(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            name: 'New User',
-            email: '',
-            phone: '+91$phoneNumber',
-            location: location,
-          );
-          user = await _userService.createUser(user);
-        }
-
-        // Save user to session
-        currentUser.value = user;
-        await sessionService.saveUser(user);
-
-        Get.snackbar(
-          'Success',
-          'OTP verified successfully',
-          backgroundColor: Colors.green.shade100,
+        // Get current location
+        final location = await _getCurrentLocation();
+        
+        // Create new user
+        final user = UserModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          name: 'New User',
+          email: '',
+          phone: '+91$phoneNumber',
+          location: location,
         );
-        return true;
+
+        try {
+          // Create user in service
+          final createdUser = await _userService.createUser(user);
+          
+          // Update current user and save to session
+          currentUser.value = createdUser;
+          await sessionService.saveUser(createdUser);
+          
+          // Navigate to map screen after successful verification
+          Get.offAllNamed('/map');
+          
+          return true;
+        } catch (e) {
+          print('Error creating user: $e');
+          Get.snackbar(
+            'Error',
+            'Failed to create user account. Please try again.',
+            backgroundColor: Colors.red.shade100,
+          );
+          return false;
+        }
       }
 
       Get.snackbar(
@@ -266,9 +257,10 @@ class AuthController extends GetxController {
       );
       return false;
     } catch (e) {
+      print('Verification error: $e');
       Get.snackbar(
         'Error',
-        'Failed to verify OTP: $e',
+        'Verification failed. Please try again.',
         backgroundColor: Colors.red.shade100,
       );
       return false;
@@ -334,11 +326,13 @@ class AuthController extends GetxController {
 
   Future<void> logout() async {
     try {
+      _locationTimer?.cancel();
       await sessionService.clearSession();
       currentUser.value = null;
-      await Get.offAllNamed('/welcome');
+      Get.offAllNamed('/welcome');
     } catch (e) {
       print('Logout error: $e');
+      throw Exception('Failed to logout: $e');
     }
   }
 
@@ -390,17 +384,34 @@ class AuthController extends GetxController {
         if (user != null) {
           final location = await _getCurrentLocation();
           final updatedUser = user.copyWith(location: location);
-          await _userService.updateUser(updatedUser);
           
-          // Update current user and save to session
-          currentUser.value = updatedUser;
-          await sessionService.saveUser(updatedUser);
-          print('User logged in successfully: ${updatedUser.name}');
-          
-          Get.offAllNamed('/map');
-          return true;
+          try {
+            // Update user in service
+            await _userService.updateUser(updatedUser);
+            
+            // Update current user and save to session
+            currentUser.value = updatedUser;
+            await sessionService.saveUser(updatedUser);
+            
+            // Start location updates
+            _startLocationUpdates();
+            
+            // Navigate to map screen
+            Get.offAllNamed('/map');
+            
+            return true;
+          } catch (e) {
+            print('Error updating user: $e');
+            Get.snackbar(
+              'Error',
+              'Failed to update user data. Please try again.',
+              backgroundColor: Colors.red.shade100,
+            );
+            return false;
+          }
         }
       }
+      
       Get.snackbar(
         'Error',
         'Invalid OTP',
@@ -408,9 +419,10 @@ class AuthController extends GetxController {
       );
       return false;
     } catch (e) {
+      print('Login error: $e');
       Get.snackbar(
         'Error',
-        'Verification failed: $e',
+        'Verification failed. Please try again.',
         backgroundColor: Colors.red.shade100,
       );
       return false;
