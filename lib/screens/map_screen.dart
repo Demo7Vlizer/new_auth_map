@@ -276,6 +276,7 @@ class MapScreen extends StatelessWidget {
             color: Colors.blue.shade700,
           ),
         ),
+        
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../controllers/auth_controller.dart';
+import '../../../core/services/session_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -10,6 +11,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final _sessionService = SessionService();
+
   @override
   void initState() {
     super.initState();
@@ -18,31 +21,21 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initializeApp() async {
     try {
-      final authController = Get.find<AuthController>();
-      
       // Add artificial delay for splash screen
       await Future.delayed(const Duration(seconds: 2));
 
       // Check if there's a valid session
-      if (authController.sessionService.isSessionValid()) {
-        final savedUser = authController.sessionService.getCurrentUser();
+      final hasValidSession = await _sessionService.isSessionValid();
+      
+      if (hasValidSession) {
+        final savedUser = await _sessionService.getCurrentUser();
         if (savedUser != null) {
+          final authController = Get.find<AuthController>();
+          
           // Restore user session
           authController.currentUser.value = savedUser;
           
-          // Update location silently
-          try {
-            final location = await authController.getCurrentLocation();
-            await authController.updateUserProfile(
-              name: savedUser.name,
-              email: savedUser.email,
-              location: location,
-            );
-          } catch (e) {
-            print('Error updating location: $e');
-          }
-          
-          // Navigate directly to map screen
+          // Navigate to map screen
           Get.offAllNamed('/map');
           return;
         }
@@ -98,4 +91,4 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
-} 
+}

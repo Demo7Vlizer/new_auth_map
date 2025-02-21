@@ -1,19 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../models/user_model.dart';
+import '../models/user_model.dart';
 import 'dart:convert';
 
 class SessionService {
-  bool isInitialized = false;
   static const String KEY_USER = 'user_data';
   static const String KEY_AUTH_TOKEN = 'auth_token';
   
-  Future<void> init() async {
-    if (!isInitialized) {
-      await SharedPreferences.getInstance();
-      isInitialized = true;
-    }
-  }
-
   Future<void> saveSession(UserModel user, String authToken) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(KEY_USER, jsonEncode(user.toJson()));

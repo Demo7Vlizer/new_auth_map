@@ -3,30 +3,32 @@ import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import 'package:hive/hive.dart';
 import 'package:get/get.dart';
+import '../models/user.dart';
 
 class UserService {
   static const String _usersBoxName = 'users';
-  static const String baseUrl = 'https://67b6ba3307ba6e590841767c.mockapi.io/api/v1';
+  static const String baseUrl =
+      'https://67b6ba3307ba6e590841767c.mockapi.io/api/v1';
 
   Future<List<UserModel>> getAllUsers() async {
     try {
       // Try to get from API first
       final response = await http.get(Uri.parse('$baseUrl/users'));
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         final users = data.map((json) => UserModel.fromJson(json)).toList();
-        
+
         // Cache in Hive
         final box = await Hive.openBox<UserModel>(_usersBoxName);
         await box.clear();
         for (var user in users) {
           await box.put(user.id, user);
         }
-        
+
         return users;
       }
-      
+
       // If API fails, get from local storage
       final box = await Hive.openBox<UserModel>(_usersBoxName);
       return box.values.toList();
@@ -124,4 +126,41 @@ class UserService {
       throw Exception('Failed to update location: $e');
     }
   }
-} 
+
+  Future<UserModel?> verifyOTP(String phone, String otp) async {
+    try {
+      if (otp.length == 6) {
+        // First try to get the user from API
+        final response = await http.get(
+          Uri.parse('$baseUrl/users'),
+        );
+
+        if (response.statusCode == 200) {
+          final List<dynamic> users = json.decode(response.body);
+          final existingUser = users.firstWhere(
+            (user) => user['user_details']['phone'] == '+91$phone',
+            orElse: () => null,
+          );
+
+          if (existingUser != null) {
+            return UserModel.fromJson(existingUser);
+          }
+        }
+
+        // If user not found, create new one
+        return UserModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          name: 'New User',
+          email: '',
+          phone: '+91$phone',
+          location: Location(latitude: 0, longitude: 0),
+          image: '',
+        );
+      }
+      return null;
+    } catch (e) {
+      print('Error verifying OTP: $e');
+      return null;
+    }
+  }
+}

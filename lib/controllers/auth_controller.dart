@@ -38,10 +38,10 @@ class AuthController extends GetxController {
         await sessionService.init();
       }
 
-      if (sessionService.isSessionValid()) {
-        final savedUser = sessionService.getCurrentUser();
+      if (await sessionService.isSessionValid()) {
+        final savedUser = await sessionService.getCurrentUser();
         print('Found valid session for user: ${savedUser?.name}');
-        
+
         if (savedUser != null) {
           currentUser.value = savedUser;
           try {
@@ -217,7 +217,7 @@ class AuthController extends GetxController {
       if (otp == _generatedOTP) {
         // Get current location
         final location = await _getCurrentLocation();
-        
+
         // Create new user
         final user = UserModel(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -230,14 +230,14 @@ class AuthController extends GetxController {
         try {
           // Create user in service
           final createdUser = await _userService.createUser(user);
-          
+
           // Update current user and save to session
           currentUser.value = createdUser;
-          await sessionService.saveUser(createdUser);
-          
+          await sessionService.saveSession(createdUser, 'auth_token_here');
+
           // Navigate to map screen after successful verification
           Get.offAllNamed('/map');
-          
+
           return true;
         } catch (e) {
           print('Error creating user: $e');
@@ -289,16 +289,15 @@ class AuthController extends GetxController {
 
       // Update in service
       await _userService.updateUser(updatedUser);
-      
+
       // Update local state
       currentUser.value = updatedUser;
-      
+
       // Save to session
-      await sessionService.saveUser(updatedUser);
+      await sessionService.saveSession(updatedUser, 'auth_token_here');
 
       // Force refresh users list
       Get.find<MapController>().loadUsers();
-
     } catch (e) {
       Get.snackbar(
         'Error',
@@ -331,8 +330,7 @@ class AuthController extends GetxController {
       currentUser.value = null;
       Get.offAllNamed('/welcome');
     } catch (e) {
-      print('Logout error: $e');
-      throw Exception('Failed to logout: $e');
+      print('Error during logout: $e');
     }
   }
 
@@ -376,47 +374,16 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<bool> verifyLoginOTP(String phoneNumber, String otp) async {
+  Future<bool> verifyLoginOTP(String phone, String otp) async {
     try {
       isLoading.value = true;
-      if (otp == _generatedOTP) {
-        final user = await _userService.getUserByPhone('+91$phoneNumber');
-        if (user != null) {
-          final location = await _getCurrentLocation();
-          final updatedUser = user.copyWith(location: location);
-          
-          try {
-            // Update user in service
-            await _userService.updateUser(updatedUser);
-            
-            // Update current user and save to session
-            currentUser.value = updatedUser;
-            await sessionService.saveUser(updatedUser);
-            
-            // Start location updates
-            _startLocationUpdates();
-            
-            // Navigate to map screen
-            Get.offAllNamed('/map');
-            
-            return true;
-          } catch (e) {
-            print('Error updating user: $e');
-            Get.snackbar(
-              'Error',
-              'Failed to update user data. Please try again.',
-              backgroundColor: Colors.red.shade100,
-            );
-            return false;
-          }
-        }
+      final user = await _userService.verifyOTP(phone, otp);
+      if (user != null) {
+        // Save session data
+        await sessionService.saveSession(user, 'auth_token_here');
+        currentUser.value = user;
+        return true;
       }
-      
-      Get.snackbar(
-        'Error',
-        'Invalid OTP',
-        backgroundColor: Colors.red.shade100,
-      );
       return false;
     } catch (e) {
       print('Login error: $e');

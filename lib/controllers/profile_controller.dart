@@ -99,7 +99,7 @@ class ProfileController extends GetxController {
 
       await _userService.updateUser(updatedUser);
       _authController.currentUser.value = updatedUser;
-      await _authController.sessionService.saveUser(updatedUser);
+      await _authController.sessionService.saveSession(updatedUser, 'auth_token_here');
       
       Get.snackbar(
         'Success',

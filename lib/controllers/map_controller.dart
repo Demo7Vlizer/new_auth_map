@@ -37,6 +37,7 @@ class MapController extends GetxController {
     });
   }
 
+
   Future<void> getCurrentLocation() async {
     try {
       isLoading.value = true;
@@ -53,6 +54,7 @@ class MapController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+
   }
 
   Future<void> loadUsers() async {
@@ -93,6 +95,7 @@ class MapController extends GetxController {
       }
     }
   }
+
 
   void focusOnUser(UserModel user, LatLng location, double zoom) {
     if (_controller != null) {

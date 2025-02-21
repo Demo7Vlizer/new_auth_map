@@ -6,19 +6,19 @@ part 'user_model.g.dart';
 class UserModel {
   @HiveField(0)
   final String id;
-  
+
   @HiveField(1)
   final String name;
-  
+
   @HiveField(2)
   final String email;
-  
+
   @HiveField(3)
   final String phone;
-  
+
   @HiveField(4)
   final Location location;
-  
+
   @HiveField(5)
   final String? image;
 
@@ -77,7 +77,7 @@ class UserModel {
 class Location {
   @HiveField(0)
   final double latitude;
-  
+
   @HiveField(1)
   final double longitude;
 
@@ -99,4 +99,4 @@ class Location {
       'longitude': longitude,
     };
   }
-} 
+}
