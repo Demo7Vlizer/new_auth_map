@@ -3,11 +3,15 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class UserDetailScreen extends StatelessWidget {
+  final String userName;
+
+  UserDetailScreen({required this.userName});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Details'),
+        title: Text(userName),
       ),
       body: FutureBuilder<List<UserDetail>>(
         future: fetchUserDetails(),

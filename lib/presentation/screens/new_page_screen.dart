@@ -36,7 +36,7 @@ class NewPageScreen extends StatelessWidget {
                   title: Text(user.name),
                   subtitle: Text('Lat: ${user.location.latitude}, Long: ${user.location.longitude}'),
                   onTap: () {
-                    Get.to(UserDetailScreen());
+                    Get.to(UserDetailScreen(userName: user.name));
                   },
                 ),
               );
