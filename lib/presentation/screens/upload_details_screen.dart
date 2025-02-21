@@ -2,9 +2,13 @@ import 'package:auth_map/controllers/upload_details_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../widgets/buttons/custom_button.dart';
+import 'new_page_screen.dart';
 
 class UploadDetailsScreen extends StatelessWidget {
   final _controller = Get.put(UploadDetailsController());
+
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +21,17 @@ class UploadDetailsScreen extends StatelessWidget {
             Get.back();
           },
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 10.0),
+            child: IconButton(
+              icon: Icon(Icons.collections_bookmark),
+              onPressed: () {
+                Get.to(NewPageScreen());
+              },
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),

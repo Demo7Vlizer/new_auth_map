@@ -126,6 +126,7 @@ class UserService {
     }
   }
 
+
   Future<UserModel?> verifyOTP(String phone, String otp) async {
     try {
       if (otp.length == 6) {
@@ -160,6 +161,16 @@ class UserService {
     } catch (e) {
       print('Error verifying OTP: $e');
       return null;
+    }
+  }
+
+  Future<List<dynamic>> fetchUsers() async {
+    final response = await http.get(Uri.parse(baseUrl));
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body); // Decode the JSON response
+    } else {
+      throw Exception('Failed to load users');
     }
   }
 }
