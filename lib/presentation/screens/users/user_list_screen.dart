@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../../controllers/map_controller.dart';
 import '../../../models/user_model.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../upload_details_screen.dart';
 
 class UserListScreen extends StatelessWidget {
   const UserListScreen({super.key});
@@ -68,6 +69,13 @@ class UserListScreen extends StatelessWidget {
           ),
         );
       }),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Get.to(() => UploadDetailsScreen());
+        },
+        child: const Icon(Icons.add),
+        backgroundColor: Colors.blue,
+      ),
     );
   }
 

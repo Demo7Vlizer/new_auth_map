@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import 'package:hive/hive.dart';
 import 'package:get/get.dart';
-import '../models/user.dart';
 
 class UserService {
   static const String _usersBoxName = 'users';
