@@ -69,7 +69,11 @@ class UserCard extends StatelessWidget {
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.only(
+          left: 20.0,
+          right: 20.0,
+          top: 10.0,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -87,12 +91,14 @@ class UserCard extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               user.name,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text('Phone: ${user.phone}'),
-            const SizedBox(height: 8),
-            Text('Email: ${user.email}'),
+            const SizedBox(height: 6),
+            Text(' ${user.email}'),
+            const SizedBox(height: 6),
+            Text('${user.location.latitude}, ${user.location.longitude}'),
           ],
         ),
       ),
@@ -140,5 +146,5 @@ class Location {
       latitude: json['latitude'],
       longitude: json['longitude'],
     );
-  } 
+  }
 }

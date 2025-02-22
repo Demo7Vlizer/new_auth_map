@@ -48,6 +48,7 @@ dependencies:
   flutter_compass: ^0.8.0
   get_storage: ^2.1.1
   shared_preferences: ^2.2.2
+  geocoding: ^2.1.0
 
 dev_dependencies:
   flutter_test:
