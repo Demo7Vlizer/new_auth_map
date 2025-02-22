@@ -20,34 +20,66 @@ class MapController extends GetxController {
   final Rx<double> bearing = 0.0.obs; // Make it public so we can access in view
   late StreamSubscription<CompassEvent> _compassSubscription;
   final RxBool isLoading = false.obs;
+  final RxBool isTrackingEnabled = false.obs;
+  Timer? _locationTimer;
 
   @override
   void onInit() {
     super.onInit();
     ever(users, (_) => updateMarkers());
-    getCurrentLocation();
-    loadUsers();
     _initCompass();
 
     // Add listener for auth changes
-    ever(Get.find<AuthController>().currentUser, (_) {
-      loadUsers();
+    ever(Get.find<AuthController>().currentUser, (user) {
+      if (user != null) {
+        // Only start location tracking when user is logged in
+        startLocationTracking();
+      } else {
+        // Stop tracking when user logs out
+        stopLocationTracking();
+      }
     });
+  }
 
-    // Set up periodic refresh
-    Timer.periodic(const Duration(minutes: 1), (_) {
-      loadUsers();
+  void startLocationTracking() {
+    getCurrentLocation(); // Get initial location
+    loadUsers();
+    
+    // Start periodic updates
+    _locationTimer?.cancel();
+    _locationTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (isTrackingEnabled.value) {
+        getCurrentLocation();
+        loadUsers();
+      }
     });
+    
+    isTrackingEnabled.value = true;
+  }
+
+  void stopLocationTracking() {
+    _locationTimer?.cancel();
+    _locationTimer = null;
+    isTrackingEnabled.value = false;
   }
 
   Future<void> getCurrentLocation() async {
     try {
       isLoading.value = true;
+
+      // Check for location permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
 
+      if (permission == LocationPermission.deniedForever) {
+        // Show a message to the user that they need to enable permissions
+        print('Location permissions are permanently denied, we cannot request permissions.');
+        return;
+      }
+
+      // If permission is granted, get the current location
       Position position = await Geolocator.getCurrentPosition();
       currentLocation.value = LatLng(position.latitude, position.longitude);
       updateMarkers();
@@ -168,6 +200,7 @@ class MapController extends GetxController {
 
   @override
   void onClose() {
+    stopLocationTracking();
     _compassSubscription.cancel();
     super.onClose();
   }
@@ -194,5 +227,20 @@ class MapController extends GetxController {
 
     return BitmapDescriptor.defaultMarkerWithHue(
         BitmapDescriptor.hueBlue); // Default marker
+  }
+
+  void showLocationTrackingDialog() {
+    Get.defaultDialog(
+      title: 'Location Tracking',
+      middleText: 'This app will track your location to provide better services. Do you want to allow this?',
+      onConfirm: () {
+        startLocationTracking(); // Start tracking
+        Get.back();
+      },
+      onCancel: () {
+        stopLocationTracking(); // Stop tracking
+        print('User declined location tracking.');
+      },
+    );
   }
 }

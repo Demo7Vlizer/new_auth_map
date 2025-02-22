@@ -11,6 +11,7 @@ analyzer:
   errors:
     unused_field: ignore
     deprecated_member_use: ignore
+    invalid_use_of_protected_member: ignore
 include: package:flutter_lints/flutter.yaml
 
 linter:

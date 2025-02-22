@@ -233,6 +233,55 @@ class MapScreen extends StatelessWidget {
               ],
             ),
           ),
+
+          // Tracking Indicator
+          Positioned(
+            top: 120,
+            right: 16,
+            child: Obx(() => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: mapController.isTrackingEnabled.value 
+                    ? Colors.green.withOpacity(0.8) 
+                    : Colors.red.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    mapController.isTrackingEnabled.value 
+                        ? Icons.location_on 
+                        : Icons.location_off,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    mapController.isTrackingEnabled.value 
+                        ? 'Tracking On' 
+                        : 'Tracking Off',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ),
+
+          Obx(() => SwitchListTile(
+            title: Text('Enable Location Tracking'),
+            value: mapController.isTrackingEnabled.value,
+            onChanged: (value) {
+              if (value) {
+                mapController.startLocationTracking();
+              } else {
+                mapController.stopLocationTracking();
+              }
+            },
+          )),
         ],
       ),
     );
