@@ -28,14 +28,18 @@ class UserDetailScreen extends StatelessWidget {
             return const Center(child: Text('No users found'));
           }
 
-          final users = snapshot.data!;
+          // Filter users to only show the selected user's details
+          final users = snapshot.data!.where((user) => user.name == userName).toList();
+          
+          if (users.isEmpty) {
+            return const Center(child: Text('No photos found for this user'));
+          }
+
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: MediaQuery.of(context).size.width > 600
-                    ? 3
-                    : 2, // Responsive columns
+                crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
                 childAspectRatio: 0.75,
                 crossAxisSpacing: 16.0,
                 mainAxisSpacing: 16.0,
@@ -74,8 +78,7 @@ class UserCard extends StatelessWidget {
       List<Placemark> placemarks = await placemarkFromCoordinates(lat, long);
       Placemark place = placemarks[0];
       return '${place.locality ?? ''}, ${place.administrativeArea ?? ''}'
-          .replaceAll(RegExp(r'^\s*,\s*|\s*,\s*$'),
-              ''); // Remove leading/trailing commas
+          .replaceAll(RegExp(r'^\s*,\s*|\s*,\s*$'), '');
     } catch (e) {
       return '${lat.toStringAsFixed(2)}, ${long.toStringAsFixed(2)}';
     }
@@ -84,82 +87,129 @@ class UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 4,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              Colors.grey.shade50,
+            ],
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              onTap: () {
-                // Navigate to the full image viewer
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FullImageViewer(imageUrl: user.image),
-                  ),
-                );
-              },
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    image: DecorationImage(
-                      image: NetworkImage(user.image),
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(15)),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          FullImageViewer(imageUrl: user.image),
+                    ),
+                  );
+                },
+                child: AspectRatio(
+                  aspectRatio: 16 / 12,
+                  child: Hero(
+                    tag: user.image,
+                    child: Image.network(
+                      user.image,
                       fit: BoxFit.cover,
                     ),
                   ),
                 ),
               ),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Phone: ${user.phone}',
-                      style: const TextStyle(fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user.email,
-                      style: const TextStyle(fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    FutureBuilder<String>(
-                      future: _getAddress(
-                        user.location.latitude,
-                        user.location.longitude,
-                      ),
-                      builder: (context, snapshot) {
-                        return Text(
-                          snapshot.data ?? 'Loading address...',
-                          style: const TextStyle(fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.phone, size: 14, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          user.phone,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.email, size: 14, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          user.email,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on,
+                          size: 14, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: FutureBuilder<String>(
+                          future: _getAddress(
+                            user.location.latitude,
+                            user.location.longitude,
+                          ),
+                          builder: (context, snapshot) {
+                            return Text(
+                              snapshot.data ?? 'Loading address...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
