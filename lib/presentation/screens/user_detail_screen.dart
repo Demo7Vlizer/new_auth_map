@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'dart:convert'; // Update with your project name Update with your project name
+import 'package:auth_map/models/user_detail.dart'; // Add this import
+import 'package:geocoding/geocoding.dart';
+import 'package:auth_map/presentation/screens/full_image_viewer.dart';
+import 'full_image_viewer.dart'; // Add this import
 
 class UserDetailScreen extends StatelessWidget {
   final String userName;
@@ -28,9 +32,11 @@ class UserDetailScreen extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, // Two cards per row
-                childAspectRatio: 0.75, // Adjust the aspect ratio as needed
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.of(context).size.width > 600
+                    ? 3
+                    : 2, // Responsive columns
+                childAspectRatio: 0.75,
                 crossAxisSpacing: 16.0,
                 mainAxisSpacing: 16.0,
               ),
@@ -63,88 +69,102 @@ class UserCard extends StatelessWidget {
 
   const UserCard({Key? key, required this.user}) : super(key: key);
 
+  Future<String> _getAddress(double lat, double long) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, long);
+      Placemark place = placemarks[0];
+      return '${place.locality ?? ''}, ${place.administrativeArea ?? ''}'
+          .replaceAll(RegExp(r'^\s*,\s*|\s*,\s*$'),
+              ''); // Remove leading/trailing commas
+    } catch (e) {
+      return '${lat.toStringAsFixed(2)}, ${long.toStringAsFixed(2)}';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
-        padding: const EdgeInsets.only(
-          left: 20.0,
-          right: 20.0,
-          top: 10.0,
-        ),
+        padding: const EdgeInsets.all(8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: double.infinity,
-              height: 120, // Set a fixed height for the image
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                image: DecorationImage(
-                  image: NetworkImage(user.image),
-                  fit: BoxFit.cover,
+            GestureDetector(
+              onTap: () {
+                // Navigate to the full image viewer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FullImageViewer(imageUrl: user.image),
+                  ),
+                );
+              },
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    image: DecorationImage(
+                      image: NetworkImage(user.image),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              user.name,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Phone: ${user.phone}',
+                      style: const TextStyle(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      user.email,
+                      style: const TextStyle(fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    FutureBuilder<String>(
+                      future: _getAddress(
+                        user.location.latitude,
+                        user.location.longitude,
+                      ),
+                      builder: (context, snapshot) {
+                        return Text(
+                          snapshot.data ?? 'Loading address...',
+                          style: const TextStyle(fontSize: 13),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 6),
-            Text('Phone: ${user.phone}'),
-            const SizedBox(height: 6),
-            Text(' ${user.email}'),
-            const SizedBox(height: 6),
-            Text('${user.location.latitude}, ${user.location.longitude}'),
           ],
         ),
       ),
-    );
-  }
-}
-
-class UserDetail {
-  final String id;
-  final String name;
-  final String image;
-  final String phone;
-  final String email;
-  final Location location;
-
-  UserDetail({
-    required this.id,
-    required this.name,
-    required this.image,
-    required this.phone,
-    required this.email,
-    required this.location,
-  });
-
-  factory UserDetail.fromJson(Map<String, dynamic> json) {
-    return UserDetail(
-      id: json['id'],
-      name: json['name'],
-      image: json['image'],
-      phone: json['phone'],
-      email: json['email'],
-      location: Location.fromJson(json['location']),
-    );
-  }
-}
-
-class Location {
-  final double latitude;
-  final double longitude;
-
-  Location({required this.latitude, required this.longitude});
-
-  factory Location.fromJson(Map<String, dynamic> json) {
-    return Location(
-      latitude: json['latitude'],
-      longitude: json['longitude'],
     );
   }
 }
