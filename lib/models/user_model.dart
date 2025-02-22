@@ -32,8 +32,9 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    print('Parsing user JSON: $json'); // Debug log
     return UserModel(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',  // Ensure ID is properly extracted
       name: json['user_details']['name'] ?? '',
       email: json['user_details']['email'] ?? '',
       phone: json['user_details']['phone'] ?? '',
@@ -44,6 +45,7 @@ class UserModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'user_details': {
         'name': name,
         'email': email,

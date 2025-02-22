@@ -39,11 +39,13 @@ class UserService {
 
   Future<UserModel> createUser(UserModel user) async {
     try {
+      print('Creating user with ID: ${user.id}'); // Debug log
+      
       final response = await http.post(
         Uri.parse('$baseUrl/users'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'id': user.id,
+          'id': user.id,  // Include ID in the root level
           'user_details': {
             'name': user.name,
             'email': user.email,
@@ -54,51 +56,48 @@ class UserService {
         }),
       );
 
+      print('Create user response: ${response.body}'); // Debug log
+
       if (response.statusCode == 201) {
         final createdUser = UserModel.fromJson(json.decode(response.body));
-        // Cache in Hive
-        final box = await Hive.openBox<UserModel>(_usersBoxName);
-        await box.put(createdUser.id, createdUser);
+        await _cacheUser(createdUser);
         return createdUser;
       }
       throw Exception('Failed to create user');
     } catch (e) {
       print('Error creating user: $e');
-      // Save locally if API fails
-      final box = await Hive.openBox<UserModel>(_usersBoxName);
-      await box.put(user.id, user);
-      return user;
+      throw Exception('Failed to create user: $e');
     }
   }
 
   Future<void> updateUser(UserModel user) async {
     try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/users/${user.id}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'user_details': {
-            'name': user.name,
-            'email': user.email,
-            'phone': user.phone,
-            'location': user.location.toJson(),
-            'image': user.image,
-          }
-        }),
-      );
+        final response = await http.put(
+            Uri.parse('$baseUrl/users/${user.id}'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({
+                'user_details': {
+                    'name': user.name,
+                    'email': user.email,
+                    'phone': user.phone,
+                    'location': user.location.toJson(),
+                    'image': user.image,
+                }
+            }),
+        );
 
-      if (response.statusCode != 200) {
-        throw Exception('Failed to update user');
-      }
+        print('Update response: ${response.body}');
 
-      // Update local storage
-      final box = await Hive.openBox<UserModel>(_usersBoxName);
-      await box.put(user.id, user);
+        if (response.statusCode != 200) {
+            throw Exception('Failed to update user: ${response.body}');
+        }
+
+        // Update local storage
+        final box = await Hive.openBox<UserModel>(_usersBoxName);
+        await box.put(user.id, user);
     } catch (e) {
-      print('Error updating user: $e');
-      // Update local storage even if API fails
-      final box = await Hive.openBox<UserModel>(_usersBoxName);
-      await box.put(user.id, user);
+        print('Error updating user: $e');
+        throw Exception('Failed to update user: $e');
     }
   }
 
@@ -172,5 +171,10 @@ class UserService {
     } else {
       throw Exception('Failed to load users');
     }
+  }
+
+  Future<void> _cacheUser(UserModel user) async {
+    final box = await Hive.openBox<UserModel>(_usersBoxName);
+    await box.put(user.id, user);
   }
 }

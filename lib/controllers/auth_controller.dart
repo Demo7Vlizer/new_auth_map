@@ -215,39 +215,30 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       if (otp == _generatedOTP) {
-        // Get current location
         final location = await _getCurrentLocation();
-
-        // Create new user
+        
+        // Generate a unique ID
+        final userId = DateTime.now().millisecondsSinceEpoch.toString();
+        print('Generated user ID: $userId'); // Debug log
+        
         final user = UserModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: 'New User',
-          email: '',
-          phone: '+91$phoneNumber',
-          location: location,
+            id: userId,  // Ensure this is set correctly
+            name: 'New User',
+            email: '',
+            phone: '+91$phoneNumber',
+            location: location,
         );
 
-        try {
-          // Create user in service
-          final createdUser = await _userService.createUser(user);
+        // Create user in service
+        final createdUser = await _userService.createUser(user);
+        print('Created user with ID: ${createdUser.id}'); // Debug log
 
-          // Update current user and save to session
-          currentUser.value = createdUser;
-          await sessionService.saveSession(createdUser, 'auth_token_here');
+        // Update current user and save to session
+        currentUser.value = createdUser;
+        await sessionService.saveSession(createdUser, 'auth_token_here');
 
-          // Navigate to map screen after successful verification
-          Get.offAllNamed('/map');
-
-          return true;
-        } catch (e) {
-          print('Error creating user: $e');
-          Get.snackbar(
-            'Error',
-            'Failed to create user account. Please try again.',
-            backgroundColor: Colors.red.shade100,
-          );
-          return false;
-        }
+        Get.offAllNamed('/map');
+        return true;
       }
 
       Get.snackbar(

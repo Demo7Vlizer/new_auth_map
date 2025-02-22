@@ -15,6 +15,10 @@ class SessionService {
   }
 
   Future<void> saveSession(UserModel user, String authToken) async {
+    if (user.id.isEmpty) {
+        throw Exception('Cannot save session: User ID is empty');
+    }
+    
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(KEY_USER, jsonEncode(user.toJson()));
     await prefs.setString(KEY_AUTH_TOKEN, authToken);
@@ -31,7 +35,9 @@ class SessionService {
     final prefs = await SharedPreferences.getInstance();
     final userData = prefs.getString(KEY_USER);
     if (userData != null) {
-      return UserModel.fromJson(jsonDecode(userData));
+        final user = UserModel.fromJson(jsonDecode(userData));
+        print('Retrieved user ID: ${user.id}');
+        return user;
     }
     return null;
   }

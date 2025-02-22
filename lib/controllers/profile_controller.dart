@@ -50,77 +50,79 @@ class ProfileController extends GetxController {
   }
 
   Future<void> pickImage() async {
+    if (selectedImage.value != null) {
+        // Prevent picking a new image if one is already selected
+        Get.snackbar('Error', 'An image is already selected. Please update or remove it first.');
+        return;
+    }
+
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (pickedFile != null) {
-      selectedImage.value = File(pickedFile.path);
+    try {
+        final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+        if (pickedFile != null) {
+            selectedImage.value = File(pickedFile.path);
+        }
+    } catch (e) {
+        Get.snackbar('Error', 'Failed to pick image: ${e.toString()}');
     }
   }
 
   Future<void> updateProfile() async {
     try {
-      // Validate if user exists
-      if (currentUser == null) {
-        throw Exception('No user found. Please login again.');
-      }
+        if (currentUser == null || currentUser!.id.isEmpty) {
+            print('Invalid user state - ID: ${currentUser?.id}'); // Debug log
+            throw Exception('Invalid user ID. Please login again.');
+        }
 
-      isLoading.value = true;
-      
-      String? imageUrl;
-      if (selectedImage.value != null) {
-        try {
-          imageUrl = await _cloudinaryService.uploadImage(selectedImage.value!);
-        } catch (e) {
-          Get.snackbar(
+        print('Current user before update: ${currentUser!.toJson()}');
+        
+        isLoading.value = true;
+        String? imageUrl;
+        
+        if (selectedImage.value != null) {
+            try {
+                imageUrl = await _cloudinaryService.uploadImage(selectedImage.value!);
+            } catch (e) {
+                throw Exception('Failed to upload image: $e');
+            }
+        }
+
+        final updatedUser = UserModel(
+            id: currentUser!.id,
+            name: nameController.text.trim(),
+            email: emailController.text.trim(),
+            phone: currentUser!.phone,
+            location: currentUser!.location,
+            image: imageUrl ?? currentUser!.image,
+        );
+
+        print('Attempting to update user: ${updatedUser.toJson()}');
+
+        await _userService.updateUser(updatedUser);
+        _authController.currentUser.value = updatedUser;
+        await _authController.sessionService.saveSession(updatedUser, 'auth_token_here');
+        
+        Get.snackbar(
+            'Success',
+            'Profile updated successfully',
+            backgroundColor: Colors.green.shade100,
+            duration: const Duration(seconds: 2),
+            snackPosition: SnackPosition.TOP,
+        );
+        
+        Get.back();
+        
+    } catch (e) {
+        print('Update error: $e');
+        Get.snackbar(
             'Error',
-            'Failed to upload image. Please try again.',
+            'Failed to update profile: ${e.toString()}',
             backgroundColor: Colors.red.shade100,
             duration: const Duration(seconds: 3),
             snackPosition: SnackPosition.TOP,
-          );
-          return;
-        }
-      }
-
-      final updatedUser = UserModel(
-        id: currentUser!.id,
-        name: nameController.text.trim(),
-        email: emailController.text.trim(),
-        phone: currentUser!.phone,
-        location: currentUser!.location,
-        image: imageUrl ?? currentUser!.image,
-      );
-
-      // Validate required fields
-      if (updatedUser.name.isEmpty) {
-        throw Exception('Name is required');
-      }
-
-      await _userService.updateUser(updatedUser);
-      _authController.currentUser.value = updatedUser;
-      await _authController.sessionService.saveSession(updatedUser, 'auth_token_here');
-      
-      Get.snackbar(
-        'Success',
-        'Profile updated successfully',
-        backgroundColor: Colors.green.shade100,
-        duration: const Duration(seconds: 2),
-        snackPosition: SnackPosition.TOP,
-      );
-      
-      Get.back();
-      
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to update profile: ${e.toString()}',
-        backgroundColor: Colors.red.shade100,
-        duration: const Duration(seconds: 3),
-        snackPosition: SnackPosition.TOP,
-      );
+        );
     } finally {
-      isLoading.value = false;
+        isLoading.value = false;
     }
   }
 
