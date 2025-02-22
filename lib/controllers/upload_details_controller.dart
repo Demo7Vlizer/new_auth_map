@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:auth_map/controllers/auth_controller.dart';
+import 'package:auth_map/models/user_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,6 +14,7 @@ class UploadDetailsController extends GetxController {
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final RxBool isLoading = false.obs;
+  final _authController = Get.find<AuthController>();
 
   Future<void> pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.camera);
@@ -29,35 +32,27 @@ class UploadDetailsController extends GetxController {
     isLoading.value = true;
 
     try {
-      // Fetch user details from the API
-      final userDetails = await fetchUserDetails();
-      if (userDetails != null) {
-        // Upload image to Cloudinary
-        final cloudinaryResponse = await uploadImageToCloudinary(selectedImage.value!);
-        if (cloudinaryResponse != null) {
-          // Save user details to the API
-          await saveUserDetails(userDetails, cloudinaryResponse);
-          Get.snackbar('Success', 'Details uploaded successfully!');
-        } else {
-          Get.snackbar('Error', 'Failed to upload image.');
-        }
+      // Get current user ID
+      final currentUser = _authController.currentUser.value;
+      if (currentUser == null) {
+        Get.snackbar('Error', 'User not logged in');
+        return;
+      }
+
+      // Upload image to Cloudinary
+      final cloudinaryResponse = await uploadImageToCloudinary(selectedImage.value!);
+      if (cloudinaryResponse != null) {
+        // Save user details to the API with current user's ID
+        await saveUserDetails(currentUser, cloudinaryResponse);
+        Get.snackbar('Success', 'Details uploaded successfully!');
       } else {
-        Get.snackbar('Error', 'Failed to fetch user details.');
+        Get.snackbar('Error', 'Failed to upload image.');
       }
     } catch (e) {
       Get.snackbar('Error', 'Failed to upload details: $e');
     } finally {
       isLoading.value = false;
     }
-  }
-
-  Future<Map<String, dynamic>?> fetchUserDetails() async {
-    final response = await http.get(Uri.parse('https://67b6ba3307ba6e590841767c.mockapi.io/api/v1/users'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data.isNotEmpty ? data[0] : null;
-    }
-    return null;
   }
 
   Future<String?> uploadImageToCloudinary(File image) async {
@@ -76,15 +71,16 @@ class UploadDetailsController extends GetxController {
     return null;
   }
 
-  Future<void> saveUserDetails(Map<String, dynamic> userDetails, String imageUrl) async {
+  Future<void> saveUserDetails(UserModel currentUser, String imageUrl) async {
     final response = await http.post(
       Uri.parse('https://67b82d462bddacfb271144b3.mockapi.io/api/v1/userDetails'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
-        'name': userDetails['user_details']['name'],
-        'email': userDetails['user_details']['email'],
-        'phone': userDetails['user_details']['phone'],
-        'location': userDetails['user_details']['location'],
+        'id': currentUser.id, // Use current user's ID
+        'name': currentUser.name,
+        'email': currentUser.email,
+        'phone': currentUser.phone,
+        'location': currentUser.location.toJson(),
         'image': imageUrl,
       }),
     );
