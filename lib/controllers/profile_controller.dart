@@ -1,6 +1,7 @@
 // ignore_for_file: unused_local_variable
 
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +9,7 @@ import '../services/cloudinary_service.dart';
 import '../models/user_model.dart';
 import '../services/user_service.dart';
 import 'auth_controller.dart';
+import 'package:http/http.dart' as http;
 
 class ProfileController extends GetxController {
   final _userService = UserService();
@@ -97,20 +99,40 @@ class ProfileController extends GetxController {
         throw Exception('Name is required');
       }
 
-      await _userService.updateUser(updatedUser);
-      _authController.currentUser.value = updatedUser;
-      await _authController.sessionService.saveSession(updatedUser, 'auth_token_here');
-      
-      Get.snackbar(
-        'Success',
-        'Profile updated successfully',
-        backgroundColor: Colors.green.shade100,
-        duration: const Duration(seconds: 2),
-        snackPosition: SnackPosition.TOP,
+      // Log the user data being sent
+      print('Updating user: ${updatedUser.toJson()}');
+
+      final response = await http.put(
+        Uri.parse('https://67b6ba3307ba6e590841767c.mockapi.io/api/v1/users/${currentUser?.id}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_details': {
+            'name': updatedUser.name,
+            'email': updatedUser.email,
+            'phone': updatedUser.phone,
+            'location': updatedUser.location.toJson(),
+            'image': updatedUser.image,
+          }
+        }),
       );
-      
-      Get.back();
-      
+
+      if (response.statusCode == 200) {
+        _authController.currentUser.value = updatedUser;
+        await _authController.sessionService.saveSession(updatedUser, 'auth_token_here');
+        
+        Get.snackbar(
+          'Success',
+          'Profile updated successfully',
+          backgroundColor: Colors.green.shade100,
+          duration: const Duration(seconds: 2),
+          snackPosition: SnackPosition.TOP,
+        );
+        
+        Get.back();
+      } else {
+        print('Error: ${response.statusCode} - ${response.body}');
+        throw Exception('Failed to update profile');
+      }
     } catch (e) {
       Get.snackbar(
         'Error',
