@@ -24,13 +24,14 @@ class MapController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    ever(users, (_) => updateMarkers());
     getCurrentLocation();
     loadUsers();
     _initCompass();
 
     // Add listener for auth changes
     ever(Get.find<AuthController>().currentUser, (_) {
-      loadUsers(); // Reload users when current user changes
+      loadUsers();
     });
 
     // Set up periodic refresh
@@ -60,13 +61,9 @@ class MapController extends GetxController {
   Future<void> loadUsers() async {
     try {
       isLoading.value = true;
-      // Get fresh data from service
       final freshUsers = await _userService.getAllUsers();
-
-      // Update only if we have data
       if (freshUsers.isNotEmpty) {
         users.value = freshUsers;
-        updateMarkers();
       }
     } catch (e) {
       print('Error loading users: $e');
@@ -78,29 +75,33 @@ class MapController extends GetxController {
   void updateMarkers() async {
     if (users.isEmpty) return;
 
-    markers.clear();
-    for (var user in users) {
-      if (user.location.latitude != 0 && user.location.longitude != 0) {
-        BitmapDescriptor markerIcon;
-        if (user.image != null && user.image!.isNotEmpty) {
-          markerIcon = await _createCustomMarkerFromImage(user.image!);
-        } else {
-          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueBlue); // Default icon
-        }
+    try {
+      final Set<Marker> newMarkers = {};
+      for (var user in users) {
+        if (user.location.latitude != 0 && user.location.longitude != 0) {
+          BitmapDescriptor markerIcon;
+          if (user.image != null && user.image!.isNotEmpty) {
+            markerIcon = await _createCustomMarkerFromImage(user.image!);
+          } else {
+            markerIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+          }
 
-        markers.add(
-          Marker(
-            markerId: MarkerId(user.id),
-            position: LatLng(user.location.latitude, user.location.longitude),
-            infoWindow: InfoWindow(
-              title: user.name.isEmpty ? 'User' : user.name,
-              snippet: user.phone,
+          newMarkers.add(
+            Marker(
+              markerId: MarkerId(user.id),
+              position: LatLng(user.location.latitude, user.location.longitude),
+              infoWindow: InfoWindow(
+                title: user.name.isEmpty ? 'User' : user.name,
+                snippet: user.phone,
+              ),
+              icon: markerIcon,
             ),
-            icon: markerIcon,
-          ),
-        );
+          );
+        }
       }
+      markers.value = newMarkers;
+    } catch (e) {
+      print('Error updating markers: $e');
     }
   }
 
