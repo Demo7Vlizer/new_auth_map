@@ -6,18 +6,20 @@ import '../services/user_service.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'dart:async';
 import '../controllers/auth_controller.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 
 class MapController extends GetxController {
   final UserService _userService = UserService();
   final RxSet<Marker> markers = <Marker>{}.obs;
   final Rx<LatLng> currentLocation =
       const LatLng(28.7041, 77.1025).obs; // Default to Delhi
-  final RxBool isLoading = false.obs;
   final RxList<UserModel> users = <UserModel>[].obs;
   final Rx<MapType> currentMapType = MapType.normal.obs;
   GoogleMapController? _controller;
   final Rx<double> bearing = 0.0.obs; // Make it public so we can access in view
   late StreamSubscription<CompassEvent> _compassSubscription;
+  final RxBool isLoading = false.obs;
 
   @override
   void onInit() {
@@ -25,10 +27,10 @@ class MapController extends GetxController {
     getCurrentLocation();
     loadUsers();
     _initCompass();
-    
+
     // Add listener for auth changes
     ever(Get.find<AuthController>().currentUser, (_) {
-      loadUsers();  // Reload users when current user changes
+      loadUsers(); // Reload users when current user changes
     });
 
     // Set up periodic refresh
@@ -36,7 +38,6 @@ class MapController extends GetxController {
       loadUsers();
     });
   }
-
 
   Future<void> getCurrentLocation() async {
     try {
@@ -50,20 +51,18 @@ class MapController extends GetxController {
       currentLocation.value = LatLng(position.latitude, position.longitude);
       updateMarkers();
     } catch (e) {
-      Get.snackbar('Error', 'Could not get location: $e');
+      print('Error getting location: $e');
     } finally {
       isLoading.value = false;
     }
-
   }
 
   Future<void> loadUsers() async {
     try {
       isLoading.value = true;
-      
       // Get fresh data from service
       final freshUsers = await _userService.getAllUsers();
-      
+
       // Update only if we have data
       if (freshUsers.isNotEmpty) {
         users.value = freshUsers;
@@ -76,26 +75,34 @@ class MapController extends GetxController {
     }
   }
 
-  void updateMarkers() {
+  void updateMarkers() async {
     if (users.isEmpty) return;
 
     markers.clear();
     for (var user in users) {
       if (user.location.latitude != 0 && user.location.longitude != 0) {
+        BitmapDescriptor markerIcon;
+        if (user.image != null && user.image!.isNotEmpty) {
+          markerIcon = await _createCustomMarkerFromImage(user.image!);
+        } else {
+          markerIcon = BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueBlue); // Default icon
+        }
+
         markers.add(
           Marker(
             markerId: MarkerId(user.id),
             position: LatLng(user.location.latitude, user.location.longitude),
-            infoWindow:
-                InfoWindow(title: user.name.isEmpty ? 'User' : user.name),
-            icon:
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            infoWindow: InfoWindow(
+              title: user.name.isEmpty ? 'User' : user.name,
+              snippet: user.phone,
+            ),
+            icon: markerIcon,
           ),
         );
       }
     }
   }
-
 
   void focusOnUser(UserModel user, LatLng location, double zoom) {
     if (_controller != null) {
@@ -162,5 +169,29 @@ class MapController extends GetxController {
   void onClose() {
     _compassSubscription.cancel();
     super.onClose();
+  }
+
+  Future<BitmapDescriptor> _createCustomMarkerFromImage(String imageUrl) async {
+    try {
+      final response =
+          await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
+      final bytes = response.buffer.asUint8List();
+
+      // Increase the size of the marker
+      final codec = await ui.instantiateImageCodec(bytes,
+          targetHeight: 150, // Adjust size as needed
+          targetWidth: 150);
+      final frame = await codec.getNextFrame();
+      final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+
+      if (data != null) {
+        return BitmapDescriptor.fromBytes(data.buffer.asUint8List());
+      }
+    } catch (e) {
+      print('Error creating custom marker: $e');
+    }
+
+    return BitmapDescriptor.defaultMarkerWithHue(
+        BitmapDescriptor.hueBlue); // Default marker
   }
 }

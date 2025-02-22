@@ -65,27 +65,6 @@ class MapScreen extends StatelessWidget {
         children: [
           // Map
           Obx(() {
-            if (mapController.isLoading.value) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(
-                      color: Colors.blue.shade400,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading map...',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
             return GoogleMap(
               onMapCreated: mapController.onMapCreated,
               initialCameraPosition: CameraPosition(
@@ -276,7 +255,6 @@ class MapScreen extends StatelessWidget {
             color: Colors.blue.shade700,
           ),
         ),
-        
       ),
     );
   }
