@@ -31,12 +31,14 @@ class NewPageScreen extends StatelessWidget {
                 margin: const EdgeInsets.all(8),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundImage: NetworkImage(user.image),
+                    backgroundColor: Colors.blue.shade100,
+                    backgroundImage: user.image != null ? NetworkImage(user.image!) : null,
+                    child: user.image == null ? Icon(Icons.person, color: Colors.blue.shade300) : null,
                   ),
                   title: Text(user.name),
                   subtitle: Text('Lat: ${user.location.latitude}, Long: ${user.location.longitude}'),
                   onTap: () {
-                    Get.to(UserDetailScreen(userName: user.name));
+                    Get.to(() => UserDetailScreen(userName: user.name));
                   },
                 ),
               );
@@ -61,18 +63,33 @@ class NewPageScreen extends StatelessWidget {
 class UserDetail {
   final String id;
   final String name;
-  final String image;
+  final String? image;
   final Location location;
 
-  UserDetail({required this.id, required this.name, required this.image, required this.location});
+  UserDetail({
+    required this.id, 
+    required this.name, 
+    this.image,
+    required this.location
+  });
 
   factory UserDetail.fromJson(Map<String, dynamic> json) {
-    return UserDetail(
-      id: json['id'],
-      name: json['user_details']['name'],
-      image: json['user_details']['image'],
-      location: Location.fromJson(json['user_details']['location']),
-    );
+    try {
+      final userDetails = json['user_details'] ?? {};
+      return UserDetail(
+        id: json['id']?.toString() ?? '',
+        name: userDetails['name']?.toString() ?? 'New User',
+        image: userDetails['image']?.toString(),
+        location: Location.fromJson(userDetails['location'] ?? {'latitude': 0.0, 'longitude': 0.0}),
+      );
+    } catch (e) {
+      print('Error parsing UserDetail: $e');
+      return UserDetail(
+        id: '',
+        name: 'Unknown User',
+        location: Location(latitude: 0.0, longitude: 0.0),
+      );
+    }
   }
 }
 
@@ -83,9 +100,14 @@ class Location {
   Location({required this.latitude, required this.longitude});
 
   factory Location.fromJson(Map<String, dynamic> json) {
-    return Location(
-      latitude: json['latitude'],
-      longitude: json['longitude'],
-    );
+    try {
+      return Location(
+        latitude: double.tryParse(json['latitude']?.toString() ?? '0') ?? 0.0,
+        longitude: double.tryParse(json['longitude']?.toString() ?? '0') ?? 0.0,
+      );
+    } catch (e) {
+      print('Error parsing Location: $e');
+      return Location(latitude: 0.0, longitude: 0.0);
+    }
   }
 }

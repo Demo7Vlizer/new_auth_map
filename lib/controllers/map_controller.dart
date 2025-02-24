@@ -26,16 +26,20 @@ class MapController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    ever(users, (_) => updateMarkers());
+    ever(currentLocation, (_) {
+      updateMarkers(); // Update markers whenever the current location changes
+    });
+    ever(users, (_) {
+      updateMarkers();
+    });
     _initCompass();
 
     // Add listener for auth changes
     ever(Get.find<AuthController>().currentUser, (user) {
       if (user != null) {
-        // Only start location tracking when user is logged in
         startLocationTracking();
+        loadUsers();
       } else {
-        // Stop tracking when user logs out
         stopLocationTracking();
       }
     });
@@ -44,7 +48,7 @@ class MapController extends GetxController {
   void startLocationTracking() {
     getCurrentLocation(); // Get initial location
     loadUsers();
-    
+
     // Start periodic updates
     _locationTimer?.cancel();
     _locationTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -53,7 +57,7 @@ class MapController extends GetxController {
         loadUsers();
       }
     });
-    
+
     isTrackingEnabled.value = true;
   }
 
@@ -74,15 +78,17 @@ class MapController extends GetxController {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        // Show a message to the user that they need to enable permissions
-        print('Location permissions are permanently denied, we cannot request permissions.');
+        print(
+            'Location permissions are permanently denied, we cannot request permissions.');
         return;
       }
 
       // If permission is granted, get the current location
       Position position = await Geolocator.getCurrentPosition();
       currentLocation.value = LatLng(position.latitude, position.longitude);
-      updateMarkers();
+
+      // Update markers to reflect the new current location
+      updateMarkers(); // Ensure this updates the avatar marker position
     } catch (e) {
       print('Error getting location: $e');
     } finally {
@@ -108,14 +114,26 @@ class MapController extends GetxController {
     if (users.isEmpty) return;
 
     try {
+      isLoading.value = true;
       final Set<Marker> newMarkers = {};
-      for (var user in users) {
+
+      // Add current location marker
+      newMarkers.add(
+        Marker(
+          markerId: MarkerId('current_location'),
+          position: currentLocation.value,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        ),
+      );
+
+      await Future.wait(users.map((user) async {
         if (user.location.latitude != 0 && user.location.longitude != 0) {
           BitmapDescriptor markerIcon;
           if (user.image != null && user.image!.isNotEmpty) {
             markerIcon = await _createCustomMarkerFromImage(user.image!);
           } else {
-            markerIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+            markerIcon =
+                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
           }
 
           newMarkers.add(
@@ -130,10 +148,13 @@ class MapController extends GetxController {
             ),
           );
         }
-      }
+      }));
+
       markers.value = newMarkers;
     } catch (e) {
       print('Error updating markers: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -211,12 +232,40 @@ class MapController extends GetxController {
           await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
       final bytes = response.buffer.asUint8List();
 
-      // Increase the size of the marker
+      // Reduce the size of the marker
       final codec = await ui.instantiateImageCodec(bytes,
-          targetHeight: 150, // Adjust size as needed
-          targetWidth: 150);
+          targetHeight: 80, // Reduced from 150
+          targetWidth: 80); // Reduced from 150
       final frame = await codec.getNextFrame();
-      final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+
+      // Create a circular frame for the image
+      final ui.Image image = frame.image;
+      final size = 80.0; // Match the target size
+
+      final pictureRecorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(pictureRecorder);
+
+      // Draw circular clipping path
+      final paint = ui.Paint()..isAntiAlias = true;
+
+      // Create circular clip
+      canvas.clipPath(ui.Path()
+        ..addOval(Rect.fromCircle(
+          center: Offset(size / 2, size / 2),
+          radius: size / 2,
+        )));
+
+      // Draw the image
+      canvas.drawImage(image, Offset.zero, paint);
+
+      // Convert to image
+      final renderedImage = await pictureRecorder.endRecording().toImage(
+            size.toInt(),
+            size.toInt(),
+          );
+
+      final data =
+          await renderedImage.toByteData(format: ui.ImageByteFormat.png);
 
       if (data != null) {
         return BitmapDescriptor.fromBytes(data.buffer.asUint8List());
@@ -225,14 +274,14 @@ class MapController extends GetxController {
       print('Error creating custom marker: $e');
     }
 
-    return BitmapDescriptor.defaultMarkerWithHue(
-        BitmapDescriptor.hueBlue); // Default marker
+    return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
   }
 
   void showLocationTrackingDialog() {
     Get.defaultDialog(
       title: 'Location Tracking',
-      middleText: 'This app will track your location to provide better services. Do you want to allow this?',
+      middleText:
+          'This app will track your location to provide better services. Do you want to allow this?',
       onConfirm: () {
         startLocationTracking(); // Start tracking
         Get.back();

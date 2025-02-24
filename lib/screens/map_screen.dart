@@ -204,7 +204,7 @@ class MapScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: Colors.black12,
                         blurRadius: 8,
@@ -239,49 +239,50 @@ class MapScreen extends StatelessWidget {
             top: 120,
             right: 16,
             child: Obx(() => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: mapController.isTrackingEnabled.value 
-                    ? Colors.green.withOpacity(0.8) 
-                    : Colors.red.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    mapController.isTrackingEnabled.value 
-                        ? Icons.location_on 
-                        : Icons.location_off,
-                    color: Colors.white,
-                    size: 16,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: mapController.isTrackingEnabled.value
+                        ? Colors.green.withOpacity(0.8)
+                        : Colors.red.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    mapController.isTrackingEnabled.value 
-                        ? 'Tracking On' 
-                        : 'Tracking Off',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        mapController.isTrackingEnabled.value
+                            ? Icons.location_on
+                            : Icons.location_off,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        mapController.isTrackingEnabled.value
+                            ? 'Tracking On'
+                            : 'Tracking Off',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
           ),
 
           Obx(() => SwitchListTile(
-            title: Text('Enable Location Tracking'),
-            value: mapController.isTrackingEnabled.value,
-            onChanged: (value) {
-              if (value) {
-                mapController.startLocationTracking();
-              } else {
-                mapController.stopLocationTracking();
-              }
-            },
-          )),
+                title: Text('Enable Location Tracking'),
+                value: mapController.isTrackingEnabled.value,
+                onChanged: (value) {
+                  if (value) {
+                    mapController.startLocationTracking();
+                  } else {
+                    mapController.stopLocationTracking();
+                  }
+                },
+              )),
         ],
       ),
     );
