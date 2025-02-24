@@ -32,11 +32,15 @@ class NewPageScreen extends StatelessWidget {
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: Colors.blue.shade100,
-                    backgroundImage: user.image != null ? NetworkImage(user.image!) : null,
-                    child: user.image == null ? Icon(Icons.person, color: Colors.blue.shade300) : null,
+                    backgroundImage:
+                        user.image != null ? NetworkImage(user.image!) : null,
+                    child: user.image == null
+                        ? Icon(Icons.person, color: Colors.blue.shade300)
+                        : null,
                   ),
                   title: Text(user.name),
-                  subtitle: Text('Lat: ${user.location.latitude}, Long: ${user.location.longitude}'),
+                  subtitle: Text(
+                      'Lat: ${user.location.latitude}, Long: ${user.location.longitude}'),
                   onTap: () {
                     Get.to(() => UserDetailScreen(userName: user.name));
                   },
@@ -50,7 +54,8 @@ class NewPageScreen extends StatelessWidget {
   }
 
   Future<List<UserDetail>> fetchUserDetails() async {
-    final response = await http.get(Uri.parse('https://67b6ba3307ba6e590841767c.mockapi.io/api/v1/users'));
+    final response = await http.get(
+        Uri.parse('https://67b6ba3307ba6e590841767c.mockapi.io/api/v1/users'));
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       return data.map((json) => UserDetail.fromJson(json)).toList();
@@ -66,12 +71,11 @@ class UserDetail {
   final String? image;
   final Location location;
 
-  UserDetail({
-    required this.id, 
-    required this.name, 
-    this.image,
-    required this.location
-  });
+  UserDetail(
+      {required this.id,
+      required this.name,
+      this.image,
+      required this.location});
 
   factory UserDetail.fromJson(Map<String, dynamic> json) {
     try {
@@ -80,7 +84,8 @@ class UserDetail {
         id: json['id']?.toString() ?? '',
         name: userDetails['name']?.toString() ?? 'New User',
         image: userDetails['image']?.toString(),
-        location: Location.fromJson(userDetails['location'] ?? {'latitude': 0.0, 'longitude': 0.0}),
+        location: Location.fromJson(
+            userDetails['location'] ?? {'latitude': 0.0, 'longitude': 0.0}),
       );
     } catch (e) {
       print('Error parsing UserDetail: $e');

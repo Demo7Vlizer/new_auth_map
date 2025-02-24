@@ -83,6 +83,9 @@ class MapScreen extends StatelessWidget {
           }),
 
           // Top Bar
+          SizedBox(
+            height: 29,
+          ),
           SafeArea(
             child: Container(
               margin: EdgeInsets.all(16),
@@ -101,7 +104,9 @@ class MapScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                       child: Text(
                         'User Locations',
                         style: TextStyle(
@@ -271,18 +276,19 @@ class MapScreen extends StatelessWidget {
                   ),
                 )),
           ),
-
-          Obx(() => SwitchListTile(
-                title: Text('Enable Location Tracking'),
-                value: mapController.isTrackingEnabled.value,
-                onChanged: (value) {
-                  if (value) {
-                    mapController.startLocationTracking();
-                  } else {
-                    mapController.stopLocationTracking();
-                  }
-                },
-              )),
+          // SafeArea(
+          //   child: Obx(() => SwitchListTile(
+          //         title: Text('Enable Location Tracking'),
+          //         value: mapController.isTrackingEnabled.value,
+          //         onChanged: (value) {
+          //           if (value) {
+          //             mapController.startLocationTracking();
+          //           } else {
+          //             mapController.stopLocationTracking();
+          //           }
+          //         },
+          //       )),
+          // ),
         ],
       ),
     );

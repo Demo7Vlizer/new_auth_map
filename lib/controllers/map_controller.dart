@@ -8,6 +8,7 @@ import 'dart:async';
 import '../controllers/auth_controller.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 
 class MapController extends GetxController {
   final UserService _userService = UserService();
@@ -117,23 +118,15 @@ class MapController extends GetxController {
       isLoading.value = true;
       final Set<Marker> newMarkers = {};
 
-      // Add current location marker
-      newMarkers.add(
-        Marker(
-          markerId: MarkerId('current_location'),
-          position: currentLocation.value,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-        ),
-      );
-
       await Future.wait(users.map((user) async {
         if (user.location.latitude != 0 && user.location.longitude != 0) {
           BitmapDescriptor markerIcon;
+
+          // Create avatar marker for all users
           if (user.image != null && user.image!.isNotEmpty) {
             markerIcon = await _createCustomMarkerFromImage(user.image!);
           } else {
-            markerIcon =
-                BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+            markerIcon = await _createDefaultPersonMarker();
           }
 
           newMarkers.add(
@@ -228,19 +221,18 @@ class MapController extends GetxController {
 
   Future<BitmapDescriptor> _createCustomMarkerFromImage(String imageUrl) async {
     try {
-      final response =
-          await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
+      final response = await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
       final bytes = response.buffer.asUint8List();
 
-      // Reduce the size of the marker
+      // Increase the size of the marker
+      final size = 120.0; // Increased from 80
       final codec = await ui.instantiateImageCodec(bytes,
-          targetHeight: 80, // Reduced from 150
-          targetWidth: 80); // Reduced from 150
+          targetHeight: size.toInt(),
+          targetWidth: size.toInt());
       final frame = await codec.getNextFrame();
 
       // Create a circular frame for the image
       final ui.Image image = frame.image;
-      final size = 80.0; // Match the target size
 
       final pictureRecorder = ui.PictureRecorder();
       final canvas = ui.Canvas(pictureRecorder);
@@ -264,8 +256,7 @@ class MapController extends GetxController {
             size.toInt(),
           );
 
-      final data =
-          await renderedImage.toByteData(format: ui.ImageByteFormat.png);
+      final data = await renderedImage.toByteData(format: ui.ImageByteFormat.png);
 
       if (data != null) {
         return BitmapDescriptor.fromBytes(data.buffer.asUint8List());
@@ -275,6 +266,50 @@ class MapController extends GetxController {
     }
 
     return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
+  }
+
+  Future<BitmapDescriptor> _createDefaultPersonMarker() async {
+    // Create a custom marker with person icon
+    final size = 120.0; // Increased from 80
+    final pictureRecorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(pictureRecorder);
+    final paint = ui.Paint()
+      ..color = Colors.blue.shade100
+      ..style = ui.PaintingStyle.fill;
+
+    // Draw circle background
+    canvas.drawCircle(
+      Offset(size / 2, size / 2),
+      size / 2,
+      paint,
+    );
+
+    // Draw person icon
+    final iconPaint = ui.Paint()
+      ..color = Colors.blue.shade700
+      ..style = ui.PaintingStyle.fill;
+
+    // Simple person icon shape - scaled up for larger size
+    final path = ui.Path()
+      ..addOval(Rect.fromCircle(
+        center: Offset(size / 2, size / 3),
+        radius: size / 4, // Increased from size/6
+      ))
+      ..addRect(Rect.fromLTWH(
+        size / 3,
+        size / 2,
+        size / 3,
+        size / 2.5, // Adjusted for better proportions
+      ));
+
+    canvas.drawPath(path, iconPaint);
+
+    final image = await pictureRecorder
+        .endRecording()
+        .toImage(size.toInt(), size.toInt());
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
   }
 
   void showLocationTrackingDialog() {
