@@ -9,6 +9,8 @@ import '../controllers/auth_controller.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import '../presentation/screens/full_image_viewer.dart';
 
 class MapController extends GetxController {
   final UserService _userService = UserService();
@@ -19,7 +21,7 @@ class MapController extends GetxController {
   final Rx<MapType> currentMapType = MapType.normal.obs;
   GoogleMapController? _controller;
   final Rx<double> bearing = 0.0.obs; // Make it public so we can access in view
-  late StreamSubscription<CompassEvent> _compassSubscription;
+  StreamSubscription<CompassEvent>? _compassSubscription;
   final RxBool isLoading = false.obs;
   final RxBool isTrackingEnabled = false.obs;
   Timer? _locationTimer;
@@ -122,7 +124,6 @@ class MapController extends GetxController {
         if (user.location.latitude != 0 && user.location.longitude != 0) {
           BitmapDescriptor markerIcon;
 
-          // Create avatar marker for all users
           if (user.image != null && user.image!.isNotEmpty) {
             markerIcon = await _createCustomMarkerFromImage(user.image!);
           } else {
@@ -138,10 +139,17 @@ class MapController extends GetxController {
                 snippet: user.phone,
               ),
               icon: markerIcon,
+              onTap: () {
+                // Show brief info on tap and detailed info on long press
+                _showUserInfoSnackbar(user);
+                _showUserDetailDialog(user);
+              },
             ),
           );
         }
       }));
+
+      // --
 
       markers.value = newMarkers;
     } catch (e) {
@@ -205,30 +213,53 @@ class MapController extends GetxController {
   }
 
   void _initCompass() {
-    _compassSubscription = FlutterCompass.events!.listen((event) {
-      if (event.heading != null) {
-        bearing.value = event.heading!;
+    try {
+      if (FlutterCompass.events != null) {
+        _compassSubscription = FlutterCompass.events!.listen(
+          (event) {
+            if (event.heading != null) {
+              bearing.value = event.heading!;
+            }
+          },
+          onError: (e) {
+            print('Error reading compass: $e');
+            bearing.value = 0.0;
+          },
+          cancelOnError: false,
+        );
+      } else {
+        print('Compass events not available on this device');
+        bearing.value = 0.0;
       }
-    });
+    } catch (e) {
+      print('Error initializing compass: $e');
+      bearing.value = 0.0;
+    }
   }
 
   @override
   void onClose() {
     stopLocationTracking();
-    _compassSubscription.cancel();
+    if (_compassSubscription != null) {
+      try {
+        _compassSubscription?.cancel();
+      } catch (e) {
+        print('Error canceling compass subscription: $e');
+      }
+    }
     super.onClose();
   }
 
   Future<BitmapDescriptor> _createCustomMarkerFromImage(String imageUrl) async {
     try {
-      final response = await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
+      final response =
+          await NetworkAssetBundle(Uri.parse(imageUrl)).load(imageUrl);
       final bytes = response.buffer.asUint8List();
 
       // Increase the size of the marker
       final size = 120.0; // Increased from 80
       final codec = await ui.instantiateImageCodec(bytes,
-          targetHeight: size.toInt(),
-          targetWidth: size.toInt());
+          targetHeight: size.toInt(), targetWidth: size.toInt());
       final frame = await codec.getNextFrame();
 
       // Create a circular frame for the image
@@ -256,7 +287,8 @@ class MapController extends GetxController {
             size.toInt(),
           );
 
-      final data = await renderedImage.toByteData(format: ui.ImageByteFormat.png);
+      final data =
+          await renderedImage.toByteData(format: ui.ImageByteFormat.png);
 
       if (data != null) {
         return BitmapDescriptor.fromBytes(data.buffer.asUint8List());
@@ -325,6 +357,122 @@ class MapController extends GetxController {
         stopLocationTracking(); // Stop tracking
         print('User declined location tracking.');
       },
+    );
+  }
+
+  //--
+
+  void _showUserInfoSnackbar(UserModel user) {
+    Get.snackbar(
+      user.name.isEmpty ? 'User' : user.name,
+      'Phone: ${user.phone}',
+      backgroundColor: Colors.white,
+      duration: const Duration(seconds: 2),
+      snackPosition: SnackPosition.BOTTOM,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 16,
+      icon: Icon(Icons.person, color: Colors.blue.shade700),
+    );
+  }
+
+  Future<String> _getAddressFromLatLng(double lat, double long) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(lat, long);
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        return '${place.street}, ${place.locality}, ${place.postalCode}';
+      }
+    } catch (e) {
+      print('Error getting address: $e');
+    }
+    return 'Location not found';
+  }
+
+  void _showUserDetailDialog(UserModel user) async {
+    String address = await _getAddressFromLatLng(
+      user.location.latitude,
+      user.location.longitude,
+    );
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Container(
+          width: 320,
+          padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  if (user.image != null && user.image!.isNotEmpty) {
+                    Get.to(() => FullImageViewer(imageUrl: user.image!));
+                  }
+                },
+                child: CircleAvatar(
+                  radius: 45,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: user.image != null && user.image!.isNotEmpty
+                      ? NetworkImage(user.image!)
+                      : null,
+                  child: user.image == null || user.image!.isEmpty
+                      ? Icon(Icons.person, size: 45, color: Colors.grey[400])
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                user.name.isEmpty ? 'User' : user.name,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '+${user.phone}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Location',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+              ),
+              Text(
+                address,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+              ),
+              // const SizedBox(height: 24),
+              // TextButton(
+              //   onPressed: () => Get.back(),
+              //   child: Text(
+              //     'Close',
+              //     style: TextStyle(
+              //       color: Colors.blue[600],
+              //       fontSize: 14,
+              //     ),
+              //   ),
+              // ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
     );
   }
 }

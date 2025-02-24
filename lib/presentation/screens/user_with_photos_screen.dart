@@ -1,10 +1,13 @@
+// ignore_for_file: use_key_in_widget_constructors
+
 import 'package:auth_map/models/user_with_photos.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/user_with_photos_controller.dart';
 
 class UserWithPhotosScreen extends StatelessWidget {
-  final UserWithPhotosController controller = Get.put(UserWithPhotosController());
+  final UserWithPhotosController controller =
+      Get.put(UserWithPhotosController());
 
   @override
   Widget build(BuildContext context) {
@@ -14,11 +17,11 @@ class UserWithPhotosScreen extends StatelessWidget {
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
-          return Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (controller.usersWithPhotos.isEmpty) {
-          return Center(child: Text('No users found'));
+          return const Center(child: Text('No users found'));
         }
 
         return ListView.builder(
@@ -50,15 +53,17 @@ class UserCard extends StatelessWidget {
           children: [
             Text(
               user.name,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text('Email: ${user.email}'),
             Text('Phone: ${user.phone}'),
             const SizedBox(height: 8),
-            Text('Location: Lat: ${user.location.latitude}, Long: ${user.location.longitude}'),
+            Text(
+                'Location: Lat: ${user.location.latitude}, Long: ${user.location.longitude}'),
             const SizedBox(height: 10),
-            Text('Uploaded Photos:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Uploaded Photos:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(
               height: 100,
               child: ListView.builder(
@@ -84,4 +89,4 @@ class UserCard extends StatelessWidget {
       ),
     );
   }
-} 
+}
